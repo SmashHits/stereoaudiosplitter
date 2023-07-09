@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Stereo Audio Splitter</title>
+  <script>
+    function splitAudio() {
+      var fileInput = document.getElementById('audioFile');
+      var audio = document.createElement('audio');
+      var file = fileInput.files[0];
+      
+      audio.src = URL.createObjectURL(file);
+      audio.addEventListener('canplaythrough', function() {
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var source = audioCtx.createMediaElementSource(audio);
+        var splitter = audioCtx.createChannelSplitter(2);
+        var leftChannel = audioCtx.createMediaStreamDestination();
+        var rightChannel = audioCtx.createMediaStreamDestination();
+        
+        source.connect(splitter);
+        splitter.connect(leftChannel, 0);
+        splitter.connect(rightChannel, 1);
+        audio.play();
+        
+        var leftRecorder = new MediaRecorder(leftChannel.stream);
+        var rightRecorder = new MediaRecorder(rightChannel.stream);
+        
+        leftRecorder.start();
+        rightRecorder.start();
+        
+        leftRecorder.ondataavailable = function(event) {
+          var leftBlob = new Blob([event.data], { type: 'audio/wav' });
+          var leftUrl = URL.createObjectURL(leftBlob);
+          var leftLink = document.createElement('a');
+          leftLink.href = leftUrl;
+          leftLink.download = 'left_channel.wav';
+          leftLink.textContent = 'Download Left Channel';
+          document.body.appendChild(leftLink);
+        };
+        
+        rightRecorder.ondataavailable = function(event) {
+          var rightBlob = new Blob([event.data], { type: 'audio/wav' });
+          var rightUrl = URL.createObjectURL(rightBlob);
+          var rightLink = document.createElement('a');
+          rightLink.href = rightUrl;
+          rightLink.download = 'right_channel.wav';
+          rightLink.textContent = 'Download Right Channel';
+          document.body.appendChild(rightLink);
+        };
+        
+        setTimeout(function() {
+          audio.pause();
+          leftRecorder.stop();
+          rightRecorder.stop();
+          audioCtx.close();
+        }, audio.duration * 1000);
+      });
+    }
+  </script>
+</head>
+<body>
+  <h1>Stereo Audio Splitter</h1>
+  <input type="file" id="audioFile" accept="audio/*">
+  <button onclick="splitAudio()">Split Audio</button>
+</body>
+</html>
